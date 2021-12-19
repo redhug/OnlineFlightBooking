@@ -1,5 +1,6 @@
 const router = require('express').Router();
 let FlightUser = require('../models/user.model');
+const bcrypt = require('bcrypt')
 
 router.route('/').get((req, res) => {
   FlightUser.find()
@@ -7,11 +8,13 @@ router.route('/').get((req, res) => {
     .catch(err => res.status(400).json('Error: ' + err));
 });
 
-router.route('/add').post((req, res) => {
+router.route('/add').post(async(req, res) => {
+  const salt = await bcrypt.genSalt(10)
+  const hash = await bcrypt.hash(req.body.password, salt)
   const firstName = req.body.firstName;
   const lastName = req.body.lastName;
   const email = req.body.email;
-  const password = req.body.password;
+  const password = hash;
   const contact = req.body.contactNo;
   const newUser = new FlightUser({
     firstName,
@@ -30,8 +33,8 @@ router.route('/login').post((req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   FlightUser.findOne({email})
-    .then(user => {
-      if(user.password == password){
+    .then(async(user) => {
+      if(await bcrypt.compare(password, user.password)){
         return res.json({ code: 200, message: 'Success' });
       }
       else{
@@ -49,11 +52,13 @@ router.route('/:id').delete((req, res) => {
 
 router.route('/update/:id').post((req, res) => {
   FlightUser.findById(req.params.id)
-    .then(users => {
+    .then(async(users) => {
+      const salt = await bcrypt.genSalt(10)
+      const hash = await bcrypt.hash(req.body.password, salt)
       users.firstName = req.body.firstName;
       users.lastName = req.body.lastName;
       users.email = req.body.email;
-      users.password = req.body.password;
+      users.password = hash;
       users.contact = req.body.contact;
 
       users.save()
